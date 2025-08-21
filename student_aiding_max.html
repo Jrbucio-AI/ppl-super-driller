@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Student‑Aiding Max — Study OS (One‑File)</title>
+<meta name="theme-color" content="#0b0f14"/>
+<style>
+:root{
+  --bg:#0b0f14;--panel:#121722;--card:#171d29;--ink:#e8eef7;--muted:#9fb0c7;--accent:#6ec2ff;
+  --ok:#22c55e;--warn:#f59e0b;--err:#ef4444;--edge:#243042;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:linear-gradient(180deg,#0b0f14,#0b0f14 60%,#0e141c);color:var(--ink);font:16px/1.5 system-ui,Segoe UI,Roboto,Helvetica,Arial}
+.wrap{max-width:1200px;margin:24px auto;padding:0 14px}
+h1{font-size:28px;margin:0 0 12px}h2{font-size:18px;margin:0 0 10px;color:var(--muted)}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.tab{background:#0f141d;border:1px solid var(--edge);color:var(--ink);padding:8px 12px;border-radius:12px;cursor:pointer}
+.tab.active{background:var(--card);box-shadow:0 0 0 1px var(--edge) inset}
+.card{background:var(--card);border:1px solid var(--edge);border-radius:16px;padding:16px}
+button{background:#0f141d;border:1px solid var(--edge);color:var(--ink);padding:10px 12px;border-radius:12px;cursor:pointer}
+button:hover{border-color:#344760}button.primary{background:var(--accent);border-color:#2e7bb6;color:#061626}
+button.ghost{background:transparent;border:1px dashed var(--edge)}
+input,select,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid var(--edge);background:#0f141d;color:var(--ink)}
+.row{display:flex;gap:8px;flex-wrap:wrap}.grow{flex:1}.right{margin-left:auto}
+.kpis{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.kpi{background:#0f141d;border:1px solid var(--edge);border-radius:12px;padding:8px 12px}
+.q{font-weight:700;font-size:20px;margin:8px 0}
+.a{margin-top:8px;color:#cfe4ff}
+.small{font-size:12px;color:var(--muted)}
+.badge{display:inline-block;padding:2px 10px;border-radius:999px;border:1px solid var(--edge);background:#0f141d;margin-right:6px}
+.mc{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.sep{height:1px;background:linear-gradient(90deg,transparent,#243042,transparent);margin:12px 0}
+.center{display:flex;align-items:center;justify-content:center}
+kbd{border:1px solid var(--edge);border-bottom-width:2px;border-radius:6px;padding:2px 6px;background:#0f141d}
+table{width:100%;border-collapse:collapse}
+th,td{border-bottom:1px dashed var(--edge);padding:6px 8px;text-align:left}
+.statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stat{background:#0f141d;border:1px solid var(--edge);padding:10px;border-radius:12px}
+.grid2{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:900px){.grid2{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎓 Student‑Aiding Max <span class="small">One‑file study OS for phone & desktop</span></h1>
+  <div class="toolbar">
+    <button class="tab active" data-tab="study">Flashcards</button>
+    <button class="tab" data-tab="exam">Exam</button>
+    <button class="tab" data-tab="srs">SRS</button>
+    <button class="tab" data-tab="notes">Notes</button>
+    <button class="tab" data-tab="cite">Cite</button>
+    <button class="tab" data-tab="convert">Convert</button>
+    <button class="tab" data-tab="calc">Calc & GPA</button>
+    <button class="tab" data-tab="timer">Pomodoro</button>
+    <button class="tab" data-tab="todo">To‑Do</button>
+    <button class="tab" data-tab="planner">Planner</button>
+    <button class="right" id="helpBtn">Help</button>
+  </div>
+
+  <!-- FLASHCARDS -->
+  <section id="study" class="card">
+    <div class="row">
+      <div class="grow">
+        <h2>Flashcards (multi‑subject, with “Why”)</h2>
+        <div class="small">Filter by subject, search, MC or short answer, simple explanations.</div>
+      </div>
+      <div class="row">
+        <button id="shuffle">Shuffle</button>
+        <button id="prev">← Prev</button>
+        <button id="next">Next →</button>
+      </div>
+    </div>
+    <div class="row" style="margin-top:6px">
+      <select id="filterTag" class="grow"><option value="">All Subjects</option></select>
+      <input id="searchBox" class="grow" placeholder="Search text… (e.g., carb ice, derivative, WW2)">
+      <button id="resetStats">Reset Stats</button>
+      <button id="importBtn" class="ghost">Import</button>
+      <button id="exportBtn" class="ghost">Export</button>
+      <input type="file" id="fileInput" accept=".json,.csv" style="display:none">
+    </div>
+    <div class="kpis">
+      <div class="kpi">Card <span id="idx">0</span>/<span id="total">0</span></div>
+      <div class="kpi">Correct: <span id="ok">0</span></div>
+      <div class="kpi">Wrong: <span id="bad">0</span></div>
+      <div class="kpi">Streak: <span id="streak">0</span></div>
+    </div>
+    <div id="cardArea">
+      <div class="badge" id="topicBadge">—</div>
+      <div class="q" id="q"></div>
+      <div id="choices" class="mc"></div>
+      <div class="a" id="a" style="display:none"></div>
+      <details id="whyBox" style="margin-top:6px;display:none">
+        <summary>Why (simple explanation)</summary>
+        <div id="why" class="small"></div>
+      </details>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button id="show">Show Answer</button>
+      <button id="right">I was Right ✅</button>
+      <button id="wrong">I was Wrong ❌</button>
+      <div class="grow"></div>
+      <button id="addBtn" class="ghost">Add</button>
+      <button id="editBtn" class="ghost">Edit</button>
+    </div>
+  </section>
+
+  <!-- EXAM -->
+  <section id="exam" class="card" style="display:none">
+    <h2>Exam Mode</h2>
+    <div class="row">
+      <select id="examTag" class="grow"><option value="">All Subjects</option></select>
+      <input id="examCount" type="number" min="5" max="200" value="40" style="max-width:140px">
+      <select id="examTime" style="max-width:160px">
+        <option value="30">30 min</option>
+        <option value="60" selected>60 min</option>
+        <option value="90">90 min</option>
+        <option value="120">120 min</option>
+      </select>
+      <button id="startExam" class="primary">Start Exam</button>
+      <button id="endExam" style="display:none">End & Grade</button>
+    </div>
+    <div class="sep"></div>
+    <div id="examInfo" class="small"></div>
+    <div id="examArea"></div>
+    <div id="examResult"></div>
+  </section>
+
+  <!-- SRS -->
+  <section id="srs" class="card" style="display:none">
+    <h2>Spaced Repetition (Leitner)</h2>
+    <div class="small">Practice “due” cards only. Right moves up buckets (1→5): 1d, 2d, 4d, 7d, 14d.</div>
+    <div class="statgrid" style="margin-top:8px">
+      <div class="stat">Due Today: <b id="dueToday">0</b></div>
+      <div class="stat">Total in SRS: <b id="srsTotal">0</b></div>
+      <div class="stat">Avg Bucket: <b id="avgBucket">0</b></div>
+      <div class="stat">Next Due: <b id="nextDue">—</b></div>
+    </div>
+    <div class="sep"></div>
+    <div id="srsArea"></div>
+    <div class="row" style="margin-top:8px">
+      <button id="srsShow">Show</button>
+      <button id="srsRight">Right ✅</button>
+      <button id="srsWrong">Wrong ❌</button>
+      <button id="srsSkip">Skip</button>
+    </div>
+  </section>
+
+  <!-- NOTES -->
+  <section id="notes" class="card" style="display:none">
+    <h2>Notes (autosave)</h2>
+    <div class="small">Markdown‑ish: **bold**, *italic*, `code`. Everything autosaves on your device.</div>
+    <div class="grid2">
+      <textarea id="notesBox" rows="16" placeholder="- Lecture highlights&#10;- Key formulas&#10;- Memory shortcuts"></textarea>
+      <div class="card"><h3>Preview</h3><div id="notesPreview" class="small"></div></div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button id="notesExport">Export .md</button>
+      <button id="notesClear">Clear</button>
+    </div>
+  </section>
+
+  <!-- CITE -->
+  <section id="cite" class="card" style="display:none">
+    <h2>Citation Generator</h2>
+    <div class="row">
+      <select id="citeStyle" style="max-width:180px">
+        <option>APA</option>
+        <option>MLA</option>
+        <option>Chicago</option>
+      </select>
+      <input id="cAuthor" class="grow" placeholder="Author(s) — e.g., Doe, J.; Smith, A.">
+      <input id="cTitle" class="grow" placeholder="Title">
+    </div>
+    <div class="row" style="margin-top:6px">
+      <input id="cYear" style="max-width:120px" placeholder="Year">
+      <input id="cPublisher" class="grow" placeholder="Publisher / Journal / Site">
+      <input id="cURL" class="grow" placeholder="URL">
+      <input id="cAccess" style="max-width:220px" placeholder="Accessed (YYYY‑MM‑DD)">
+    </div>
+    <div class="row" style="margin-top:6px">
+      <button id="makeCite" class="primary">Make Citation</button>
+      <button id="copyCite">Copy</button>
+    </div>
+    <div class="sep"></div>
+    <div id="citeOut" class="small"></div>
+  </section>
+
+  <!-- CONVERT -->
+  <section id="convert" class="card" style="display:none">
+    <h2>Unit Converter</h2>
+    <div class="grid2">
+      <div class="card">
+        <h3>Length</h3>
+        <div class="row"><input id="lenVal" placeholder="Value"><select id="lenFrom"><option>m</option><option>ft</option><option>km</option><option>mi</option><option>cm</option></select><span>→</span><select id="lenTo"><option>m</option><option>ft</option><option>km</option><option>mi</option><option>cm</option></select><button id="lenGo">Convert</button></div>
+        <div id="lenOut" class="small"></div>
+      </div>
+      <div class="card">
+        <h3>Mass</h3>
+        <div class="row"><input id="massVal" placeholder="Value"><select id="massFrom"><option>kg</option><option>lb</option><option>g</option></select><span>→</span><select id="massTo"><option>kg</option><option>lb</option><option>g</option></select><button id="massGo">Convert</button></div>
+        <div id="massOut" class="small"></div>
+      </div>
+      <div class="card">
+        <h3>Temp</h3>
+        <div class="row"><input id="tempVal" placeholder="Value"><select id="tempFrom"><option>C</option><option>F</option><option>K</option></select><span>→</span><select id="tempTo"><option>C</option><option>F</option><option>K</option></select><button id="tempGo">Convert</button></div>
+        <div id="tempOut" class="small"></div>
+      </div>
+      <div class="card">
+        <h3>Volume</h3>
+        <div class="row"><input id="volVal" placeholder="Value"><select id="volFrom"><option>L</option><option>mL</option><option>gal</option><option>qt</option></select><span>→</span><select id="volTo"><option>L</option><option>mL</option><option>gal</option><option>qt</option></select><button id="volGo">Convert</button></div>
+        <div id="volOut" class="small"></div>
+      </div>
+      <div class="card">
+        <h3>Time</h3>
+        <div class="row"><input id="timeVal" placeholder="Value"><select id="timeFrom"><option>sec</option><option>min</option><option>hr</option></select><span>→</span><select id="timeTo"><option>sec</option><option>min</option><option>hr</option></select><button id="timeGo">Convert</button></div>
+        <div id="timeOut" class="small"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CALC & GPA -->
+  <section id="calc" class="card" style="display:none">
+    <h2>Calculator & GPA</h2>
+    <div class="grid2">
+      <div class="card">
+        <h3>Calculator</h3>
+        <div class="row"><input id="calcExpr" class="grow" placeholder="e.g., (2+3)*4/5"><button id="calcGo">=</button></div>
+        <div id="calcOut" class="small"></div>
+      </div>
+      <div class="card">
+        <h3>GPA</h3>
+        <table id="gpaTable">
+          <thead><tr><th>Course</th><th>Credits</th><th>Grade</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div class="row" style="margin-top:6px">
+          <input id="course" placeholder="Course"><input id="credits" placeholder="3"><select id="grade">
+            <option>A+</option><option>A</option><option>A-</option>
+            <option>B+</option><option>B</option><option>B-</option>
+            <option>C+</option><option>C</option><option>C-</option>
+            <option>D+</option><option>D</option><option>D-</option>
+            <option>F</option>
+          </select><button id="addCourse">Add</button>
+        </div>
+        <div id="gpaOut" class="small"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pomodoro -->
+  <section id="timer" class="card" style="display:none">
+    <h2>Pomodoro</h2>
+    <div class="center" style="font-size:48px;margin:10px 0"><span id="clock">25:00</span></div>
+    <div class="row">
+      <button id="startStop">Start</button>
+      <button id="reset">Reset</button>
+      <select id="mode">
+        <option value="25">Focus 25</option>
+        <option value="50">Deep 50</option>
+        <option value="5">Break 5</option>
+        <option value="10">Break 10</option>
+      </select>
+      <div class="kpi">Blocks: <span id="blocks">0</span></div>
+    </div>
+  </section>
+
+  <!-- To-Do -->
+  <section id="todo" class="card" style="display:none">
+    <h2>To‑Do (Today)</h2>
+    <div class="row">
+      <input id="todoInput" class="grow" placeholder="Add a task… e.g., 20 Q per subject">
+      <button id="addTodo">Add</button>
+    </div>
+    <ul id="todos" class="list" style="list-style:none;padding:0;margin:8px 0"></ul>
+    <div class="small">Click a task to toggle done. 🗑️ deletes.</div>
+  </section>
+
+  <!-- PLANNER -->
+  <section id="planner" class="card" style="display:none">
+    <h2>Planner & .ics Export</h2>
+    <div class="row">
+      <input id="plTitle" class="grow" placeholder="Event title">
+      <input id="plDate" type="date">
+      <input id="plStart" type="time">
+      <input id="plEnd" type="time">
+      <button id="plAdd">Add</button>
+      <button id="plExport">Export .ics</button>
+    </div>
+    <table id="plTable" style="margin-top:8px"><thead><tr><th>When</th><th>Title</th><th></th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <!-- HELP MODAL -->
+  <div class="card" style="margin-top:14px">
+    <div class="small">Shortcuts: <kbd>Space</kbd> show, <kbd>←/→</kbd> prev/next, <kbd>1..4</kbd> MC choice, <kbd>Y</kbd>/<kbd>N</kbd> right/wrong.</div>
+  </div>
+</div>
+
+<script>
+/* ---------- Utilities ---------- */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const save = (k,v)=>localStorage.setItem(k,JSON.stringify(v));
+const load = (k,d)=>{ try{return JSON.parse(localStorage.getItem(k)) ?? d}catch{return d} };
+const todayStr = (d=new Date())=>d.toISOString().substring(0,10);
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function csvParse(text){
+  const rows=text.trim().split(/\\r?\\n/);
+  const out=[];
+  for(const r of rows){
+    const cols=[]; let cur='',inQ=false;
+    for(let i=0;i<r.length;i++){
+      const ch=r[i];
+      if(ch==='\"'){ inQ=!inQ; continue }
+      if(ch===',' && !inQ){ cols.push(cur.trim()); cur=''; continue }
+      cur+=ch;
+    }
+    cols.push(cur.trim());
+    const [q,a,choices,why,tag] = cols;
+    if(!q||!a) continue;
+    const obj={q,a};
+    if(choices){ obj.choices=choices.split(';').map(s=>s.trim()).filter(Boolean) }
+    if(why) obj.why=why;
+    if(tag) obj.tag=tag;
+    out.push(obj);
+  }
+  return out;
+}
+function idgen(){return Math.random().toString(36).slice(2)+Date.now().toString(36)}
+
+/* ---------- Sample Multi‑Subject Deck (original content) ---------- */
+const SAMPLE = [
+  // Aviation (selected)
+  {q:"Day VFR fuel reserve for airplanes?", a:"At least 30 minutes at normal cruise after reaching your first intended landing.", why:"Per 91.151, day=30 min, night=45 min reserve at normal cruise.", tag:"Aviation", choices:["20 minutes","30 minutes","45 minutes"]},
+  {q:"Carburetor ice most likely when…", a:"About 20–70°F (‑7 to 21°C) with high humidity.", why:"Venturi + fuel vaporization can freeze moisture even above 0°C.", tag:"Aviation", choices:["Below freezing & dry","20–70°F & humid",">90°F & dry"]},
+  // Math
+  {q:"Derivative of x² is…", a:"2x.", why:"Power rule: d(x^n)/dx = n·x^(n‑1).", tag:"Math", choices:["x","2x","x²"]},
+  {q:"Integral of v with respect to t is…", a:"Displacement (plus constant).", why:"s = ∫ v dt; area under velocity‑time curve.", tag:"Math", choices:["Acceleration","Displacement","Jerk"]},
+  {q:"Slope‑intercept form is…", a:"y = mx + b.", why:"m is slope, b is y‑intercept.", tag:"Math"},
+  // Science
+  {q:"Water’s chemical formula is…", a:"H₂O.", why:"2 hydrogen, 1 oxygen.", tag:"Science"},
+  {q:"Mitochondria are the…", a:"Powerhouse of the cell (ATP production).", why:"Cellular respiration occurs in mitochondria.", tag:"Science"},
+  {q:"Newton’s 2nd law states…", a:"F = m·a.", why:"Force equals mass times acceleration.", tag:"Science"},
+  // History
+  {q:"U.S. Declaration of Independence signed in…", a:"1776.", why:"Adopted July 4, 1776.", tag:"History", choices:["1492","1776","1865"]},
+  {q:"WWII ended in…", a:"1945.", why:"Germany surrendered May 1945; Japan September 1945.", tag:"History"},
+  // Language
+  {q:"Hola means…", a:"Hello.", why:"Basic Spanish greeting.", tag:"Language"},
+  {q:"Bonjour is used in…", a:"French.", why:"Bonjour = Good day/Hello.", tag:"Language"},
+  {q:"ありがとう (arigatō) means…", a:"Thank you.", why:"Basic Japanese phrase.", tag:"Language"},
+];
+
+/* ---------- Storage Keys ---------- */
+const K_DECK="sa_deck_v1";
+const K_STATS="sa_stats_v1";
+const K_SRS="sa_srs_v1";
+const K_POMO="sa_pomo_v1";
+const K_TODO="sa_todo_v1";
+const K_NOTES="sa_notes_v1";
+const K_GPA="sa_gpa_v1";
+const K_PLAN="sa_plan_v1";
+
+/* ---------- State ---------- */
+let userDeck = load(K_DECK, []);
+let deck = attachIds([...SAMPLE, ...userDeck]);
+let i=0, show=false, streak=0, correct=0, wrong=0;
+let studyFilterTag="", studySearch="";
+let srsMap = load(K_SRS, {}); // id -> {bucket,next_due,last, seen}
+updateStatsCount();
+
+function attachIds(arr){ return arr.map(c => ({id:c.id||idgen(), q:c.q, a:c.a, choices:c.choices, why:c.why, tag:c.tag||"General"})); }
+function rebuildDeck(){ deck = attachIds([...SAMPLE, ...userDeck]); applyFilters(); fillTags() }
+
+/* ---------- Tags & Filters ---------- */
+function fillTags(){
+  const tags = [...new Set(deck.map(c=>c.tag||"General"))].sort();
+  const sel = $('#filterTag'); const examSel = $('#examTag');
+  const currentF = sel.value; const currentE = examSel.value;
+  sel.innerHTML='<option value="">All Subjects</option>'+tags.map(t=>`<option>${t}</option>`).join('');
+  examSel.innerHTML='<option value="">All Subjects</option>'+tags.map(t=>`<option>${t}</option>`).join('');
+  if(tags.includes(currentF)) sel.value=currentF;
+  if(tags.includes(currentE)) examSel.value=currentE;
+}
+function applyFilters(){
+  let arr = attachIds([...SAMPLE, ...userDeck]);
+  if(studyFilterTag) arr = arr.filter(c=>(c.tag||"General")===studyFilterTag);
+  if(studySearch){
+    const q = studySearch.toLowerCase();
+    arr = arr.filter(c => (c.q+" "+(c.a||"")+" "+(c.why||"")).toLowerCase().includes(q));
+  }
+  deck = arr;
+  i = Math.min(i, Math.max(0, deck.length-1));
+  renderCard();
+}
+
+/* ---------- Render Study Card ---------- */
+function renderCard(){
+  $('#total').textContent = deck.length;
+  $('#idx').textContent = deck.length? (i+1) : 0;
+  $('#ok').textContent = correct; $('#bad').textContent = wrong; $('#streak').textContent = streak;
+  const c = deck[i];
+  if(!c){ $('#q').textContent="No cards match your filter. Clear filters."; $('#a').style.display='none'; $('#choices').innerHTML=''; $('#whyBox').style.display='none'; $('#topicBadge').textContent='—'; return; }
+  $('#topicBadge').textContent = c.tag||"General";
+  $('#q').textContent = c.q;
+  const ans = $('#a'); ans.textContent = "Answer: " + c.a; ans.style.display = show ? 'block' : 'none';
+  const box = $('#choices'); box.innerHTML='';
+  if(c.choices && c.choices.length){
+    c.choices.forEach((ch,idx)=>{
+      const b = document.createElement('button');
+      b.textContent = ch; b.onclick = ()=>{ show=true; ans.style.display='block'; if(ch.trim().toLowerCase()===c.a.trim().toLowerCase()){ b.style.borderColor='var(--ok)'; } else { b.style.borderColor='var(--err)' } };
+      box.appendChild(b);
+    });
+    box.style.display='grid';
+  } else box.style.display='none';
+  if(c.why){ $('#why').textContent = c.why; $('#whyBox').style.display='block'; } else { $('#whyBox').style.display='none'; }
+}
+
+/* ---------- Study Controls ---------- */
+$('#show').onclick = ()=>{ show=!show; $('#a').style.display = show?'block':'none'; };
+$('#next').onclick = ()=>{ i=(i+1)%Math.max(1,deck.length); show=false; renderCard() };
+$('#prev').onclick = ()=>{ i=(i-1+Math.max(1,deck.length))%Math.max(1,deck.length); show=false; renderCard() };
+$('#shuffle').onclick = ()=>{ deck = shuffle(deck); i=0; show=false; renderCard() };
+$('#right').onclick = ()=>{ correct++; streak++; updateStatsCount(); srsMark(deck[i]?.id,true); $('#ok').textContent=correct; $('#streak').textContent=streak; $('#next').click(); };
+$('#wrong').onclick = ()=>{ wrong++; streak=0; updateStatsCount(); srsMark(deck[i]?.id,false); $('#bad').textContent=wrong; $('#streak').textContent=streak; };
+
+$('#filterTag').onchange = (e)=>{ studyFilterTag = e.target.value; applyFilters() };
+$('#searchBox').oninput = (e)=>{ studySearch = e.target.value; applyFilters() };
+
+$('#resetStats').onclick = ()=>{ correct=wrong=streak=0; updateStatsCount(); renderCard() };
+
+/* ---------- Add/Edit ---------- */
+$('#addBtn').onclick = ()=>{
+  const q = prompt("Question?"); if(!q) return;
+  const a = prompt("Answer?"); if(!a) return;
+  const choices = prompt("Choices (optional, separate with ;)","");
+  const why = prompt("Why (simple explanation)?","");
+  const tag = prompt("Subject/Tag? (e.g., Math, Science)","General") || "General";
+  const card = {id:idgen(), q,a,why,tag};
+  if(choices && choices.trim()) card.choices = choices.split(';').map(s=>s.trim()).filter(Boolean);
+  userDeck.push(card); save(K_DECK,userDeck); rebuildDeck();
+  i = deck.length-1; renderCard();
+};
+$('#editBtn').onclick = ()=>{
+  const c = deck[i]; if(!c) return;
+  const q = prompt("Edit Question:", c.q); if(!q) return;
+  const a = prompt("Edit Answer:", c.a); if(!a) return;
+  const choices = prompt("Edit Choices (; separated, blank for none):", (c.choices||[]).join(';'));
+  const why = prompt("Edit Why (simple):", c.why||"");
+  const tag = prompt("Edit Subject/Tag:", c.tag||"General") || "General";
+  const updated={...c,q,a,why,tag};
+  if(choices && choices.trim()) updated.choices=choices.split(';').map(s=>s.trim()).filter(Boolean); else delete updated.choices;
+  const idx = userDeck.findIndex(x=>x.id===c.id);
+  if(idx>=0) userDeck[idx]=updated; else userDeck.push(updated);
+  save(K_DECK,userDeck); rebuildDeck(); renderCard();
+};
+
+/* ---------- Import/Export ---------- */
+$('#importBtn').onclick = ()=>$('#fileInput').click();
+$('#fileInput').onchange = async (e)=>{
+  const f=e.target.files[0]; if(!f) return;
+  const text = await f.text();
+  let arr=[];
+  if(f.name.endsWith('.csv')) arr = csvParse(text);
+  else{
+    try{ arr = JSON.parse(text) }catch{ alert('Invalid file. Use JSON array or CSV.'); return; }
+  }
+  if(!Array.isArray(arr)){ alert('Invalid data format.'); return; }
+  const clean = arr.map(o=>({id:idgen(), q:o.q||o.question, a:o.a||o.answer, choices:o.choices, why:o.why, tag:o.tag||o.subject||o.topic||"Imported"}))
+                  .filter(x=>x.q && x.a);
+  userDeck = attachIds([...userDeck, ...clean]);
+  save(K_DECK,userDeck); rebuildDeck(); i=0; renderCard();
+  alert(`Imported ${clean.length} cards.`);
+};
+$('#exportBtn').onclick = ()=>{
+  const state = exportState();
+  const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'student_aiding_backup.json';
+  a.click();
+};
+
+function exportState(){
+  return {
+    deck:userDeck, srs:srsMap, stats:{correct,wrong,streak},
+    notes:$('#notesBox').value, todos, pomoBlocks:blocks, gpa:load(K_GPA,[]), plan:load(K_PLAN,[])
+  }
+}
+function loadState(obj){
+  if(obj.deck) userDeck = attachIds(obj.deck);
+  if(obj.srs) srsMap = obj.srs;
+  if(obj.stats){ correct=obj.stats.correct||0; wrong=obj.stats.wrong||0; streak=obj.stats.streak||0; }
+  if(obj.notes!=null){ $('#notesBox').value=obj.notes; renderNotes() }
+  if(obj.todos) { todos=obj.todos; renderTodos() }
+  if(obj.pomoBlocks!=null){ blocks=obj.pomoBlocks; save(K_POMO,blocks); $('#blocks').textContent=blocks }
+  if(obj.gpa){ save(K_GPA,obj.gpa); renderGPA() }
+  if(obj.plan){ save(K_PLAN,obj.plan); renderPlan() }
+  save(K_DECK,userDeck); save(K_SRS,srsMap); updateStatsCount(); rebuildDeck(); renderCard();
+}
+
+/* ---------- SRS ---------- */
+const BUCKET_DELAYS = {1:1,2:2,3:4,4:7,5:14};
+function srsGet(id){ if(!srsMap[id]) srsMap[id]={bucket:1,next_due:todayStr(),last:null,seen:0}; return srsMap[id]; }
+function srsMark(id, ok){
+  if(!id) return; const s = srsGet(id);
+  s.seen=(s.seen||0)+1; s.last=todayStr(); s.bucket = ok ? Math.min(5,(s.bucket||1)+1) : 1;
+  const add=BUCKET_DELAYS[s.bucket]||1; const d=new Date(); d.setDate(d.getDate()+add); s.next_due=todayStr(d);
+  srsMap[id]=s; save(K_SRS,srsMap); updateSrsStats();
+}
+function srsDueList(){ const t=todayStr(); return deck.filter(c => (srsGet(c.id).next_due <= t)); }
+function updateSrsStats(){
+  const due=srsDueList(); $('#dueToday').textContent = due.length;
+  const all=deck.map(c=>srsGet(c.id)); $('#srsTotal').textContent = all.length;
+  const avg=all.reduce((a,b)=>a+(b.bucket||1),0)/Math.max(1,all.length); $('#avgBucket').textContent=avg.toFixed(2);
+  const next=all.map(s=>s.next_due).sort()[0]; $('#nextDue').textContent=next||'—';
+}
+let srsQueue=[], srsIdx=0, srsShown=false;
+function srsRender(){
+  if(srsQueue.length===0){ srsQueue = srsDueList(); srsIdx=0; srsShown=false; }
+  $('#srsArea').innerHTML='';
+  const c = srsQueue[srsIdx];
+  if(!c){ $('#srsArea').innerHTML='<div class="small" style="color:var(--ok)">No due cards. Great job—come back later!</div>'; return; }
+  const topic = document.createElement('div'); topic.className='badge'; topic.textContent=c.tag||"General";
+  const q = document.createElement('div'); q.className='q'; q.textContent=c.q;
+  const a = document.createElement('div'); a.className='a'; a.textContent="Answer: "+c.a; a.style.display = srsShown?'block':'none';
+  const why = document.createElement('div'); why.className='small'; why.textContent=c.why||''; why.style.display = srsShown && c.why ? 'block':'none';
+  const choices = document.createElement('div'); choices.className='mc';
+  if(c.choices && c.choices.length){
+    c.choices.forEach(ch=>{
+      const b=document.createElement('button'); b.textContent=ch; b.onclick=()=>{ srsShown=true; a.style.display='block'; b.style.borderColor=(ch.trim().toLowerCase()===c.a.trim().toLowerCase())?'var(--ok)':'var(--err)'; if(c.why){ why.style.display='block' } };
+      choices.appendChild(b);
+    });
+  }
+  $('#srsArea').append(topic,q,choices,a,why);
+}
+$('#srsShow').onclick=()=>{ srsShown=!srsShown; srsRender() };
+$('#srsRight').onclick=()=>{ const c=srsQueue[srsIdx]; if(!c) return; srsMark(c.id,true); srsIdx++; srsShown=false; srsRender() };
+$('#srsWrong').onclick=()=>{ const c=srsQueue[srsIdx]; if(!c) return; srsMark(c.id,false); srsIdx++; srsShown=false; srsRender() };
+$('#srsSkip').onclick=()=>{ srsIdx++; srsShown=false; srsRender() };
+
+/* ---------- Exam Mode ---------- */
+let examTimer=null, examSecs=0, examSet=[], examAnswers={};
+function startExam(){
+  const tag = $('#examTag').value;
+  const count = Math.min(parseInt($('#examCount').value||30,10), deck.length);
+  examSet = shuffle(deck.filter(c=>!tag || (c.tag||"General")===tag)).slice(0,count);
+  examAnswers={};
+  examSecs = parseInt($('#examTime').value,10)*60;
+  $('#examArea').innerHTML = examSet.map((c,idx)=>renderExamQ(c,idx)).join('');
+  $('#examResult').innerHTML = '';
+  $('#examInfo').innerHTML = `Questions: <b>${count}</b> · Time: <b><span id="examClock"></span></b>`;
+  $('#endExam').style.display='inline-block';
+  if(examTimer) clearInterval(examTimer);
+  examTimer = setInterval(()=>{ examSecs--; $('#examClock').textContent = fmt(examSecs); if(examSecs<=0){ clearInterval(examTimer); gradeExam(); } },1000);
+  $('#examClock').textContent = fmt(examSecs);
+}
+function fmt(s){ const m=String(Math.floor(s/60)).padStart(2,'0'); const r=String(s%60).padStart(2,'0'); return `${m}:${r}` }
+function renderExamQ(c, idx){
+  const choices = (c.choices&&c.choices.length? c.choices.map((ch,j)=>`
+    <label style="display:block;margin:4px 0">
+      <input type="radio" name="q${idx}" value="${String(j)}"> ${ch}
+    </label>`).join('') : `<input type="text" data-free="q${idx}" placeholder="Type answer…">`);
+  return `<div class="card" style="margin:10px 0">
+    <div class="badge">${c.tag||"General"}</div>
+    <div class="q">${idx+1}. ${c.q}</div>
+    <div>${choices}</div>
+  </div>`;
+}
+function gradeExam(){
+  if(examTimer){ clearInterval(examTimer); examTimer=null; }
+  examSet.forEach((c,idx)=>{
+    const radios = $$(`input[name="q${idx}"]`);
+    if(radios.length){
+      const picked = radios.find(r=>r.checked);
+      examAnswers[idx] = picked ? Number(picked.value) : -1;
+    }else{
+      const el = $(`[data-free="q${idx}"]`);
+      examAnswers[idx] = (el?.value||'').trim();
+    }
+  });
+  let right=0; const rows=[];
+  examSet.forEach((c,idx)=>{
+    let ok=false, chosen=null;
+    if(c.choices && c.choices.length){
+      const idxAns = c.choices.findIndex(x=>x.trim().toLowerCase()===c.a.trim().toLowerCase());
+      chosen = examAnswers[idx];
+      ok = (chosen===idxAns);
+    }else{
+      chosen = String(examAnswers[idx]||'').toLowerCase();
+      ok = (chosen === c.a.trim().toLowerCase());
+    }
+    if(ok) right++;
+    rows.push({no:idx+1, topic:c.tag||"General", q:c.q, your:(c.choices&&c.choices.length)? (c.choices[chosen]??'(blank)') : (chosen||'(blank)'), correct:c.a, why:c.why||'' , ok});
+  });
+  const pct = Math.round(100*right/Math.max(1,examSet.length));
+  $('#examResult').innerHTML = `<div class="kpis">
+    <div class="kpi">Score: <b>${right}/${examSet.length} (${pct}%)</b></div>
+    <div class="kpi ${pct>=70?'ok':(pct>=60?'warn':'err')}">${pct>=70?'✅ Nice!':'⚠️ Keep practicing'}</div>
+  </div>
+  <div class="sep"></div>
+  <table><thead><tr><th>#</th><th>Subject</th><th>Question</th><th>Your Answer</th><th>Correct</th><th>Why</th><th>✓</th></tr></thead>
+  <tbody>${rows.map(r=>`<tr><td>${r.no}</td><td>${r.topic}</td><td>${r.q}</td><td>${r.your}</td><td>${r.correct}</td><td class="small">${r.why}</td><td>${r.ok?'✓':'—'}</td></tr>`).join('')}</tbody></table>`;
+  $('#endExam').style.display='none';
+}
+$('#startExam').onclick = startExam;
+$('#endExam').onclick = gradeExam;
+
+/* ---------- Stats ---------- */
+function updateStatsCount(){ save(K_STATS,{correct,wrong,streak}); }
+(function initStats(){ const s=load(K_STATS,{correct:0,wrong:0,streak:0}); correct=s.correct; wrong=s.wrong; streak=s.streak; })();
+
+/* ---------- Notes ---------- */
+function renderNotes(){
+  const md = ($('#notesBox').value||'')
+    .replace(/\\*\\*(.*?)\\*\\*/g,'<b>$1</b>')
+    .replace(/\\*(.*?)\\*/g,'<i>$1</i>')
+    .replace(/`(.*?)`/g,'<code>$1</code>')
+    .replace(/\\n/g,'<br>');
+  $('#notesPreview').innerHTML = md;
+  save(K_NOTES,$('#notesBox').value||'');
+}
+$('#notesBox').value = load(K_NOTES,'');
+renderNotes();
+$('#notesBox').addEventListener('input',renderNotes);
+$('#notesExport').onclick = ()=>{
+  const blob = new Blob([$('#notesBox').value||''], {type:'text/markdown'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='notes.md'; a.click();
+};
+$('#notesClear').onclick = ()=>{ if(confirm('Clear notes?')){ $('#notesBox').value=''; renderNotes(); }};
+
+/* ---------- Citation ---------- */
+$('#makeCite').onclick = ()=>{
+  const s=$('#citeStyle').value, A=$('#cAuthor').value, T=$('#cTitle').value, Y=$('#cYear').value, P=$('#cPublisher').value, U=$('#cURL').value, D=$('#cAccess').value;
+  let out='';
+  if(s==='APA'){
+    out = `${A} (${Y}). <i>${T}</i>. ${P}. ${U?U:''}`.replace(/\\s+\\./g,'.');
+  }else if(s==='MLA'){
+    out = `${A}. <i>${T}</i>. ${P}, ${Y}. ${U?U:''} ${D?`Accessed ${D}.`:''}`;
+  }else{
+    out = `${A}, <i>${T}</i> (${P}, ${Y}). ${U?U:''}`;
+  }
+  $('#citeOut').innerHTML = out;
+};
+$('#copyCite').onclick = async ()=>{
+  try{ await navigator.clipboard.writeText($('#citeOut').innerText); alert('Copied'); }catch{ alert('Copy failed'); }
+};
+
+/* ---------- Converters ---------- */
+const LEN = {m:1, ft:0.3048, km:1000, mi:1609.344, cm:0.01};
+const MASS = {kg:1, lb:0.45359237, g:0.001};
+const VOL = {L:1, mL:0.001, gal:3.78541, qt:0.946353};
+const TIME = {sec:1, min:60, hr:3600};
+function conv(val, from, to, map){ return Number(val)*map[from]/map[to]; }
+$('#lenGo').onclick = ()=>{ const v=conv($('#lenVal').value,$('#lenFrom').value,$('#lenTo').value,LEN); $('#lenOut').textContent = isFinite(v)? v.toFixed(6) : '—'; };
+$('#massGo').onclick = ()=>{ const v=conv($('#massVal').value,$('#massFrom').value,$('#massTo').value,MASS); $('#massOut').textContent = isFinite(v)? v.toFixed(6) : '—'; };
+$('#volGo').onclick = ()=>{ const v=conv($('#volVal').value,$('#volFrom').value,$('#volTo').value,VOL); $('#volOut').textContent = isFinite(v)? v.toFixed(6) : '—'; };
+$('#timeGo').onclick = ()=>{ const v=conv($('#timeVal').value,$('#timeFrom').value,$('#timeTo').value,TIME); $('#timeOut').textContent = isFinite(v)? v.toFixed(6) : '—'; };
+$('#tempGo').onclick = ()=>{
+  const v=Number($('#tempVal').value), f=$('#tempFrom').value, t=$('#tempTo').value;
+  let C = f==='C'? v : f==='F'? (v-32)*5/9 : v-273.15;
+  let out = t==='C'? C : t==='F'? (C*9/5+32) : (C+273.15);
+  $('#tempOut').textContent = isFinite(out)? out.toFixed(3) : '—';
+};
+
+/* ---------- Calculator & GPA ---------- */
+$('#calcGo').onclick = ()=>{
+  try{
+    const expr=$('#calcExpr').value;
+    if(!/^[0-9+\\-*/().\\s^%]*$/.test(expr)) throw 0; // naive guard
+    const safe = expr.replace(/\\^/g,'**');
+    const res = Function(`"use strict"; return (${safe})`)();
+    $('#calcOut').textContent = String(res);
+  }catch{ $('#calcOut').textContent='Error'; }
+};
+const GPA_MAP = {"A+":4.0,"A":4.0,"A-":3.7,"B+":3.3,"B":3.0,"B-":2.7,"C+":2.3,"C":2.0,"C-":1.7,"D+":1.3,"D":1.0,"D-":0.7,"F":0.0};
+function renderGPA(){
+  const tbody = $('#gpaTable tbody'); tbody.innerHTML='';
+  const rows = load(K_GPA, []);
+  let pts=0, creds=0;
+  rows.forEach((r,idx)=>{
+    const tr=document.createElement('tr');
+    const del=document.createElement('button'); del.textContent='🗑️'; del.onclick=()=>{ rows.splice(idx,1); save(K_GPA,rows); renderGPA(); };
+    tr.innerHTML=`<td>${r.course||''}</td><td>${r.credits||0}</td><td>${r.grade||''}</td><td></td>`;
+    tr.lastChild.appendChild(del);
+    tbody.appendChild(tr);
+    const g=GPA_MAP[r.grade]??0; pts+=g*(Number(r.credits)||0); creds+=Number(r.credits)||0;
+  });
+  const gpa = creds? (pts/creds).toFixed(3) : '0.000';
+  $('#gpaOut').textContent = `GPA: ${gpa} (credits: ${creds})`;
+}
+renderGPA();
+$('#addCourse').onclick = ()=>{
+  const rows = load(K_GPA, []);
+  rows.push({course:$('#course').value||'', credits:Number($('#credits').value||0), grade:$('#grade').value});
+  save(K_GPA, rows); renderGPA();
+};
+
+/* ---------- Pomodoro ---------- */
+let secs=25*60, tick=null, blocks=Number(load(K_POMO,0));
+function drawClock(){ $('#clock').textContent=fmt(secs) }
+function start(){ if(tick) return; tick=setInterval(()=>{ secs--; drawClock(); if(secs<=0){ clearInterval(tick); tick=null; if($('#mode').value!=='5' && $('#mode').value!=='10'){ blocks++; save(K_POMO,blocks); $('#blocks').textContent=blocks } try{ const o=new (window.AudioContext||window.webkitAudioContext)(); const osc=o.createOscillator(); osc.connect(o.destination); osc.frequency.value=880; osc.start(); setTimeout(()=>{osc.stop();o.close()},350) }catch(e){} } },1000) }
+function stop(){ if(tick){ clearInterval(tick); tick=null } }
+$('#blocks').textContent=blocks; drawClock();
+$('#startStop').onclick=()=>{ if(tick){ stop(); $('#startStop').textContent='Start' } else { start(); $('#startStop').textContent='Stop' } };
+$('#reset').onclick=()=>{ stop(); secs=Number($('#mode').value)*60; drawClock(); $('#startStop').textContent='Start' };
+$('#mode').onchange=()=>{ stop(); secs=Number($('#mode').value)*60; drawClock(); $('#startStop').textContent='Start' };
+
+/* ---------- To-Do ---------- */
+let todos = load(K_TODO, []);
+function renderTodos(){
+  const ul = $('#todos'); ul.innerHTML='';
+  todos.forEach((t,idx)=>{
+    const li = document.createElement('li'); li.style.display='flex'; li.style.alignItems='center'; li.style.gap='8px'; li.style.padding='6px 0'; li.style.borderBottom='1px dashed var(--edge)';
+    const cb = document.createElement('input'); cb.type='checkbox'; cb.checked=t.done; cb.onchange=()=>{ t.done=cb.checked; save(K_TODO,todos); renderTodos() };
+    const txt = document.createElement('div'); txt.textContent=t.text; txt.style.flex='1'; if(t.done) txt.style.textDecoration='line-through';
+    txt.onclick=()=>{ t.done=!t.done; save(K_TODO,todos); renderTodos() };
+    const del = document.createElement('button'); del.textContent='🗑️'; del.onclick=()=>{ todos.splice(idx,1); save(K_TODO,todos); renderTodos() };
+    li.append(cb, txt, del); ul.appendChild(li);
+  });
+}
+renderTodos();
+$('#addTodo').onclick=()=>{ const v=$('#todoInput').value.trim(); if(!v) return; todos.push({text:v,done:false}); save(K_TODO,todos); $('#todoInput').value=''; renderTodos(); };
+
+/* ---------- Planner & ICS ---------- */
+function renderPlan(){
+  const rows = load(K_PLAN, []);
+  const tb = $('#plTable tbody'); tb.innerHTML='';
+  rows.forEach((ev,idx)=>{
+    const tr=document.createElement('tr');
+    const del=document.createElement('button'); del.textContent='🗑️'; del.onclick=()=>{ rows.splice(idx,1); save(K_PLAN,rows); renderPlan(); };
+    tr.innerHTML=`<td>${ev.date} ${ev.start}-${ev.end}</td><td>${ev.title}</td><td></td>`;
+    tr.lastChild.appendChild(del); tb.appendChild(tr);
+  });
+}
+renderPlan();
+$('#plAdd').onclick=()=>{
+  const ev={title:$('#plTitle').value||'Study', date:$('#plDate').value, start:$('#plStart').value, end:$('#plEnd').value};
+  if(!ev.date||!ev.start||!ev.end) return alert('Pick date + start/end');
+  const rows=load(K_PLAN,[]); rows.push(ev); save(K_PLAN,rows); renderPlan();
+};
+$('#plExport').onclick=()=>{
+  const rows=load(K_PLAN,[]);
+  const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:student-aiding-max'];
+  rows.forEach((ev,i)=>{
+    const dt = (d,t)=>d.replace(/-/g,'')+'T'+t.replace(':','')+'00';
+    lines.push('BEGIN:VEVENT');
+    lines.push('UID:'+idgen()+'@student-aiding');
+    lines.push('DTSTAMP:'+dt(todayStr(), '00:00'));
+    lines.push('DTSTART:'+dt(ev.date, ev.start));
+    lines.push('DTEND:'+dt(ev.date, ev.end));
+    lines.push('SUMMARY:'+ev.title);
+    lines.push('END:VEVENT');
+  });
+  lines.push('END:VCALENDAR');
+  const blob=new Blob([lines.join('\\n')],{type:'text/calendar'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='planner.ics'; a.click();
+};
+
+/* ---------- Keyboard Shortcuts & Tabs ---------- */
+$$('.tab').forEach(b=>b.onclick=()=>{ $$('.tab').forEach(x=>x.classList.remove('active')); b.classList.add('active'); ['study','exam','srs','notes','cite','convert','calc','timer','todo','planner'].forEach(id=>$('#'+id).style.display=(b.dataset.tab===id?'block':'none')); if(b.dataset.tab==='srs'){ updateSrsStats(); srsRender(); } });
+window.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA') return;
+  if(e.code==='Space'){ e.preventDefault(); $('#show').click() }
+  if(e.key==='ArrowRight'){ $('#next').click() }
+  if(e.key==='ArrowLeft'){ $('#prev').click() }
+  if(e.key.toLowerCase()==='y'){ $('#right').click() }
+  if(e.key.toLowerCase()==='n'){ $('#wrong').click() }
+  if(['1','2','3','4'].includes(e.key)){ const btn=$$('#choices button')[Number(e.key)-1]; if(btn) btn.click(); }
+});
+
+/* ---------- Init ---------- */
+function updateStatsCount(){ save(K_STATS,{correct,wrong,streak}); }
+rebuildDeck(); renderCard();
+updateSrsStats(); srsRender();
+</script>
+</body>
+</html>
